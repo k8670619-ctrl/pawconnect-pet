@@ -1,0 +1,51 @@
+services:
+  # 1. FastAPI Backend Web Service
+  - type: web
+    name: pawconnect-backend
+    env: python
+    region: singapore
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
+    rootDir: backend
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pawconnect-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pawconnect-redis
+          property: connectionString
+
+  # 2. Public Frontend Web App
+  - type: web
+    name: pawconnect-frontend
+    env: node
+    region: singapore
+    buildCommand: "npm run build"
+    startCommand: "npm run start"
+    rootDir: frontend
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://pawconnect-backend.onrender.com/api/v1
+
+  # 3. Admin Panel Web App
+  - type: web
+    name: pawconnect-admin
+    env: node
+    region: singapore
+    buildCommand: "npm run build"
+    startCommand: "npm run start -- -p 3001"
+    rootDir: admin
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://pawconnect-backend.onrender.com/api/v1
+
+databases:
+  - name: pawconnect-postgres
+    databaseName: pawconnect_db
+    user: pawconnect_user
+    region: singapore
