@@ -53,12 +53,12 @@ class OTPService:
                     timeout=5,
                 )
                 if res.status_code in (200, 201):
-                    logger.info("✅ Resend OTP email delivered to %s", email)
+                    logger.info("[SUCCESS] Resend OTP email delivered to %s", email)
                     return True
                 else:
-                    logger.warning("⚠️ Resend API failed status %s: %s", res.status_code, res.text)
+                    logger.warning("[WARN] Resend API failed status %s: %s", res.status_code, res.text)
             except Exception as e:
-                logger.error("❌ Resend API exception: %s", str(e))
+                logger.error("[ERROR] Resend API exception: %s", str(e))
 
         # 2. SMTP Integration
         if settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD:
@@ -74,16 +74,16 @@ class OTPService:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                 server.send_message(msg)
                 server.quit()
-                logger.info("✅ SMTP OTP email delivered to %s", email)
+                logger.info("[SUCCESS] SMTP OTP email delivered to %s", email)
                 return True
             except Exception as e:
-                logger.error("❌ SMTP delivery failed: %s", str(e))
+                logger.error("[ERROR] SMTP delivery failed: %s", str(e))
 
         # 3. Development Fallback (Console Logger)
         print("\n" + "=" * 60)
-        print(f"🔑 [DEV MODE] EMAIL OTP for {email}: {otp_code}")
+        print(f"[DEV MODE] EMAIL OTP for {email}: {otp_code}")
         print("=" * 60 + "\n")
-        logger.info("🔑 [DEV MODE] EMAIL OTP for %s: %s", email, otp_code)
+        logger.info("[DEV MODE] EMAIL OTP for %s: %s", email, otp_code)
         return True
 
     @staticmethod
@@ -106,12 +106,12 @@ class OTPService:
                     timeout=5,
                 )
                 if res.status_code in (200, 201):
-                    logger.info("✅ Twilio SMS OTP sent to %s", phone)
+                    logger.info("[SUCCESS] Twilio SMS OTP sent to %s", phone)
                     return True
                 else:
-                    logger.warning("⚠️ Twilio SMS failed: %s", res.text)
+                    logger.warning("[WARN] Twilio SMS failed: %s", res.text)
             except Exception as e:
-                logger.error("❌ Twilio exception: %s", str(e))
+                logger.error("[ERROR] Twilio exception: %s", str(e))
 
         # 2. MSG91 Integration
         if settings.MSG91_AUTH_KEY and settings.MSG91_TEMPLATE_ID:
@@ -127,18 +127,18 @@ class OTPService:
                     timeout=5,
                 )
                 if res.status_code == 200:
-                    logger.info("✅ MSG91 SMS OTP sent to %s", phone)
+                    logger.info("[SUCCESS] MSG91 SMS OTP sent to %s", phone)
                     return True
                 else:
-                    logger.warning("⚠️ MSG91 SMS failed: %s", res.text)
+                    logger.warning("[WARN] MSG91 SMS failed: %s", res.text)
             except Exception as e:
-                logger.error("❌ MSG91 exception: %s", str(e))
+                logger.error("[ERROR] MSG91 exception: %s", str(e))
 
         # 3. Development Fallback (Console Logger)
         print("\n" + "=" * 60)
-        print(f"🔑 [DEV MODE] SMS OTP for {phone}: {otp_code}")
+        print(f"[DEV MODE] SMS OTP for {phone}: {otp_code}")
         print("=" * 60 + "\n")
-        logger.info("🔑 [DEV MODE] SMS OTP for %s: %s", phone, otp_code)
+        logger.info("[DEV MODE] SMS OTP for %s: %s", phone, otp_code)
         return True
 
     @classmethod
@@ -161,7 +161,7 @@ class OTPService:
             time_since_creation = (now - (recent_otp.expires_at - timedelta(minutes=settings.OTP_EXPIRY_MINUTES))).total_seconds()
             if time_since_creation < settings.OTP_COOLDOWN_SECONDS:
                 remaining_seconds = int(settings.OTP_COOLDOWN_SECONDS - time_since_creation)
-                logger.warning("⏱️ [OTP COOLDOWN ACTIVE] Target: '%s' — %ds remaining", clean_target, remaining_seconds)
+                logger.warning("[OTP COOLDOWN ACTIVE] Target: '%s' -- %ds remaining", clean_target, remaining_seconds)
                 return False, f"Please wait {remaining_seconds} seconds before requesting a new OTP.", {
                     "cooldown_remaining": remaining_seconds,
                     "cooldown_active": True
@@ -180,7 +180,7 @@ class OTPService:
         db.add(otp_record)
         db.commit()
 
-        logger.info("💾 [OTP STORED IN DB] Target: '%s' | Code: '%s' | Expires At: %s", clean_target, otp_code, expires_at)
+        logger.info("[OTP STORED IN DB] Target: '%s' | Code: '%s' | Expires At: %s", clean_target, otp_code, expires_at)
 
         # Dispatch via requested channel
         if "@" in clean_target or channel == "email":
@@ -205,7 +205,7 @@ class OTPService:
         clean_code = str(otp_code).strip()
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        logger.info("🔍 [OTP VERIFY REQUEST] Target: '%s', Code: '%s'", clean_target, clean_code)
+        logger.info("[OTP VERIFY REQUEST] Target: '%s', Code: '%s'", clean_target, clean_code)
 
         try:
             # Step 1: Query all records for target to diagnose failure reason
@@ -214,7 +214,7 @@ class OTPService:
             ).order_by(OTPCode.id.desc()).all()
 
             if not records:
-                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP not found (no OTP records in DB)", clean_target)
+                logger.warning("[OTP FAIL] Target: '%s' -- Reason: OTP not found (no OTP records in DB)", clean_target)
                 return False, "Invalid or expired 6-digit OTP code.", None
 
             # Step 2: Find matching record by code
@@ -226,22 +226,22 @@ class OTPService:
 
             if not matching_record:
                 stored_codes = [r.code for r in records[:3]]
-                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: Invalid OTP (received '%s', active stored: %s)", clean_target, clean_code, stored_codes)
+                logger.warning("[OTP FAIL] Target: '%s' -- Reason: Invalid OTP (received '%s', active stored: %s)", clean_target, clean_code, stored_codes)
                 return False, "Invalid or expired 6-digit OTP code.", None
 
             # Step 3: Check if already used
             if matching_record.is_used:
-                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP already used (code: %s)", clean_target, clean_code)
+                logger.warning("[OTP FAIL] Target: '%s' -- Reason: OTP already used (code: %s)", clean_target, clean_code)
                 return False, "Invalid or expired 6-digit OTP code.", None
 
             # Step 4: Check if expired
             if matching_record.expires_at <= now:
-                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP expired (expired_at: %s, now: %s)", clean_target, matching_record.expires_at, now)
+                logger.warning("[OTP FAIL] Target: '%s' -- Reason: OTP expired (expired_at: %s, now: %s)", clean_target, matching_record.expires_at, now)
                 return False, "Invalid or expired 6-digit OTP code.", None
 
-            # Step 5: Successful match — Mark OTP used
+            # Step 5: Successful match -- Mark OTP used
             matching_record.is_used = True
-            logger.info("✅ [OTP VERIFY SUCCESS] Target: '%s' | Code: '%s' validated!", clean_target, clean_code)
+            logger.info("[OTP VERIFY SUCCESS] Target: '%s' | Code: '%s' validated!", clean_target, clean_code)
 
             # Step 6: Mark user as verified in DB
             user = db.query(User).filter(
@@ -254,12 +254,12 @@ class OTPService:
                 else:
                     user.is_phone_verified = True
                 user.verification_status = "verified"
-                logger.info("👤 [USER VERIFIED] User #%d (%s) marked verified!", user.id, user.email)
+                logger.info("[USER VERIFIED] User #%d (%s) marked verified!", user.id, user.email)
 
             db.commit()
 
             if not user:
-                logger.warning("⚠️ [OTP VERIFIED BUT USER NOT FOUND] Target: '%s'", clean_target)
+                logger.warning("[OTP VERIFIED BUT USER NOT FOUND] Target: '%s'", clean_target)
                 return True, "OTP verified successfully.", None
 
             db.refresh(user)
@@ -287,5 +287,5 @@ class OTPService:
             }
 
         except Exception as e:
-            logger.error("💥 [OTP FAIL] Target: '%s' — Reason: Database lookup failed: %s", clean_target, str(e))
+            logger.error("[OTP FAIL] Target: '%s' -- Reason: Database lookup failed: %s", clean_target, str(e))
             return False, "Database lookup failed during OTP verification.", None
