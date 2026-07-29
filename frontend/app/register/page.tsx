@@ -92,19 +92,9 @@ export default function RegisterPage() {
       });
 
       if (res && res.status === 'success') {
-        // Request OTP for the newly registered email
-        let otpHint = '123456';
-        try {
-          const otpRes = await requestOTP({ target: email, otp_type: 'email_verification' });
-          if (otpRes?.otp_hint) {
-            otpHint = otpRes.otp_hint;
-          }
-        } catch (otpErr) {
-          console.log('OTP generation notice:', otpErr);
-        }
-
+        const otpHint = res.otp_hint || '';
         router.push(
-          `/verify-otp?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}&otp_hint=${encodeURIComponent(otpHint)}`
+          `/verify-otp?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}${otpHint ? `&otp_hint=${encodeURIComponent(otpHint)}` : ''}`
         );
       } else {
         setErrorMessage(res?.message || 'Registration failed. Please check form fields.');

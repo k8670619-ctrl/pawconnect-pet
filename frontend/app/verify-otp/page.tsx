@@ -28,7 +28,7 @@ function VerifyOTPContent() {
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
 
-  const targetValue = activeTab === 'email' ? emailParam : phoneParam;
+  const effectiveTarget = targetValue || emailParam || phoneParam || user?.email || user?.phone || '';
 
   // Countdown timer effect
   useEffect(() => {
@@ -40,14 +40,14 @@ function VerifyOTPContent() {
   }, [cooldown]);
 
   const handleResendOTP = async () => {
-    if (!targetValue || cooldown > 0 || isResending) return;
+    if (!effectiveTarget || cooldown > 0 || isResending) return;
     setIsResending(true);
     setResendMessage('');
     setErrorMessage('');
 
     try {
       const res = await resendOTP({
-        target: targetValue,
+        target: effectiveTarget,
         channel: activeTab,
       });
 
@@ -57,7 +57,7 @@ function VerifyOTPContent() {
       }
 
       setCooldown(res?.cooldown_seconds || 60);
-      setResendMessage(`A fresh 6-digit OTP code has been sent to ${targetValue}!`);
+      setResendMessage(`A fresh 6-digit OTP code has been sent to ${effectiveTarget}!`);
     } catch (err: any) {
       if (err.response?.status === 429) {
         setErrorMessage(err.response?.data?.detail || 'Please wait before requesting another OTP.');
@@ -77,11 +77,16 @@ function VerifyOTPContent() {
       return;
     }
 
+    if (!effectiveTarget) {
+      setErrorMessage('Target email or phone number is missing. Please re-enter your email or phone.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await verifyOTP({
-        target: targetValue,
+        target: effectiveTarget,
         otp_code: otpCode,
       });
 
@@ -101,8 +106,8 @@ function VerifyOTPContent() {
         setErrorMessage(res?.message || 'Invalid or expired 6-digit OTP code.');
       }
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.detail || 'Verification failed. Please check the 6-digit OTP.');
+      console.error('OTP Verification Error:', err);
+      setErrorMessage(err.response?.data?.detail || 'Invalid or expired 6-digit OTP code.');
     } finally {
       setIsLoading(false);
     }

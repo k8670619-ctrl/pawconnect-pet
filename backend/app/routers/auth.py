@@ -23,12 +23,17 @@ def register_user(payload: UserRegister, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=400, detail=msg)
     
+    # Automatically generate and store OTP code in database for the registered user
+    otp_ok, otp_msg, otp_data = OTPService.send_otp(db, user.email, "email")
+    otp_hint = otp_data.get("otp_hint") if otp_ok else None
+
     return {
         "status": "success",
         "message": msg,
         "user_id": user.id,
         "email": user.email,
-        "role": user.role
+        "role": user.role,
+        "otp_hint": otp_hint
     }
 
 @router.get("/check-username", summary="Check Username Availability", description="Checks if a username is available in real-time.")

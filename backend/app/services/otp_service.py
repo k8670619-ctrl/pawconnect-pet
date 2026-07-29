@@ -147,11 +147,12 @@ class OTPService:
         Generates OTP, enforces 60s cooldown, stores OTP with 5m expiry,
         sends via specified channel (email or phone), and returns status details.
         """
+        clean_target = target.strip().lower() if "@" in target else target.strip()
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Check for 60-second cooldown on recent unused OTP for this target
         recent_otp = db.query(OTPCode).filter(
-            OTPCode.target == target,
+            OTPCode.target == clean_target,
             OTPCode.is_used == False,
             OTPCode.expires_at > now
         ).order_by(OTPCode.id.desc()).first()
@@ -160,6 +161,7 @@ class OTPService:
             time_since_creation = (now - (recent_otp.expires_at - timedelta(minutes=settings.OTP_EXPIRY_MINUTES))).total_seconds()
             if time_since_creation < settings.OTP_COOLDOWN_SECONDS:
                 remaining_seconds = int(settings.OTP_COOLDOWN_SECONDS - time_since_creation)
+                logger.warning("⏱️ [OTP COOLDOWN ACTIVE] Target: '%s' — %ds remaining", clean_target, remaining_seconds)
                 return False, f"Please wait {remaining_seconds} seconds before requesting a new OTP.", {
                     "cooldown_remaining": remaining_seconds,
                     "cooldown_active": True
@@ -169,8 +171,8 @@ class OTPService:
         expires_at = now + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
 
         otp_record = OTPCode(
-            target=target,
-            otp_type="email_verification" if "@" in target or channel == "email" else "phone_verification",
+            target=clean_target,
+            otp_type="email_verification" if "@" in clean_target or channel == "email" else "phone_verification",
             code=otp_code,
             expires_at=expires_at,
             is_used=False
@@ -178,73 +180,112 @@ class OTPService:
         db.add(otp_record)
         db.commit()
 
-        # Dispatch via requested channel
-        if "@" in target or channel == "email":
-            cls.send_email_otp(target, otp_code)
-        else:
-            cls.send_sms_otp(target, otp_code)
+        logger.info("💾 [OTP STORED IN DB] Target: '%s' | Code: '%s' | Expires At: %s", clean_target, otp_code, expires_at)
 
-        return True, f"6-digit OTP code sent to {target} (expires in {settings.OTP_EXPIRY_MINUTES} mins).", {
-            "target": target,
+        # Dispatch via requested channel
+        if "@" in clean_target or channel == "email":
+            cls.send_email_otp(clean_target, otp_code)
+        else:
+            cls.send_sms_otp(clean_target, otp_code)
+
+        return True, f"6-digit OTP code sent to {clean_target} (expires in {settings.OTP_EXPIRY_MINUTES} mins).", {
+            "target": clean_target,
             "channel": channel,
-            "otp_hint": otp_code,  # For testing/dev
+            "otp_hint": otp_code,  # Generated code for dev / testing
             "cooldown_seconds": settings.OTP_COOLDOWN_SECONDS
         }
 
     @classmethod
     def verify_otp(cls, db: Session, target: str, otp_code: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         """
-        Verifies 6-digit OTP code, marks OTP as used, marks user as verified,
-        and returns JWT session for auto-login.
+        Verifies 6-digit OTP code with detailed diagnostic console logging,
+        marks OTP as used, marks user as verified, and returns JWT session for auto-login.
         """
+        clean_target = target.strip().lower() if "@" in target else target.strip()
+        clean_code = str(otp_code).strip()
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        record = db.query(OTPCode).filter(
-            OTPCode.target == target,
-            OTPCode.code == otp_code,
-            OTPCode.is_used == False,
-            OTPCode.expires_at > now
-        ).first()
+        logger.info("🔍 [OTP VERIFY REQUEST] Target: '%s', Code: '%s'", clean_target, clean_code)
 
-        if not record:
-            return False, "Invalid or expired 6-digit OTP code.", None
+        try:
+            # Step 1: Query all records for target to diagnose failure reason
+            records = db.query(OTPCode).filter(
+                (OTPCode.target == clean_target) | (OTPCode.target == target.strip())
+            ).order_by(OTPCode.id.desc()).all()
 
-        record.is_used = True
+            if not records:
+                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP not found (no OTP records in DB)", clean_target)
+                return False, "Invalid or expired 6-digit OTP code.", None
 
-        user = db.query(User).filter((User.email == target) | (User.phone == target)).first()
-        if user:
-            if "@" in target:
-                user.is_email_verified = True
-            else:
-                user.is_phone_verified = True
-            if user.is_email_verified or user.is_phone_verified:
+            # Step 2: Find matching record by code
+            matching_record = None
+            for r in records:
+                if r.code == clean_code:
+                    matching_record = r
+                    break
+
+            if not matching_record:
+                stored_codes = [r.code for r in records[:3]]
+                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: Invalid OTP (received '%s', active stored: %s)", clean_target, clean_code, stored_codes)
+                return False, "Invalid or expired 6-digit OTP code.", None
+
+            # Step 3: Check if already used
+            if matching_record.is_used:
+                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP already used (code: %s)", clean_target, clean_code)
+                return False, "Invalid or expired 6-digit OTP code.", None
+
+            # Step 4: Check if expired
+            if matching_record.expires_at <= now:
+                logger.warning("❌ [OTP FAIL] Target: '%s' — Reason: OTP expired (expired_at: %s, now: %s)", clean_target, matching_record.expires_at, now)
+                return False, "Invalid or expired 6-digit OTP code.", None
+
+            # Step 5: Successful match — Mark OTP used
+            matching_record.is_used = True
+            logger.info("✅ [OTP VERIFY SUCCESS] Target: '%s' | Code: '%s' validated!", clean_target, clean_code)
+
+            # Step 6: Mark user as verified in DB
+            user = db.query(User).filter(
+                (User.email == clean_target) | (User.phone == clean_target) | (User.email == target.strip()) | (User.phone == target.strip())
+            ).first()
+
+            if user:
+                if "@" in clean_target:
+                    user.is_email_verified = True
+                else:
+                    user.is_phone_verified = True
                 user.verification_status = "verified"
+                logger.info("👤 [USER VERIFIED] User #%d (%s) marked verified!", user.id, user.email)
 
-        db.commit()
+            db.commit()
 
-        if not user:
-            return True, "OTP verified successfully.", None
+            if not user:
+                logger.warning("⚠️ [OTP VERIFIED BUT USER NOT FOUND] Target: '%s'", clean_target)
+                return True, "OTP verified successfully.", None
 
-        db.refresh(user)
+            db.refresh(user)
 
-        # Generate JWT session for auto-login
-        access_token = create_access_token({"sub": str(user.id), "role": user.role})
-        refresh_token = create_refresh_token({"sub": str(user.id)})
+            # Generate JWT session for auto-login
+            access_token = create_access_token({"sub": str(user.id), "role": user.role})
+            refresh_token = create_refresh_token({"sub": str(user.id)})
 
-        user_data = {
-            "id": user.id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role,
-            "is_email_verified": user.is_email_verified,
-            "is_phone_verified": user.is_phone_verified,
-            "verification_status": user.verification_status,
-        }
+            user_data = {
+                "id": user.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone": user.phone,
+                "role": user.role,
+                "is_email_verified": user.is_email_verified,
+                "is_phone_verified": user.is_phone_verified,
+                "verification_status": user.verification_status,
+            }
 
-        return True, "OTP verified successfully! Account verified.", {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "user": user_data
-        }
+            return True, "OTP verified successfully! Account verified.", {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "user": user_data
+            }
+
+        except Exception as e:
+            logger.error("💥 [OTP FAIL] Target: '%s' — Reason: Database lookup failed: %s", clean_target, str(e))
+            return False, "Database lookup failed during OTP verification.", None

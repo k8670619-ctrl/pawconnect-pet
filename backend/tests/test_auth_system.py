@@ -157,23 +157,17 @@ def test_production_otp_flow_and_cooldown():
         }
     )
     assert reg_res.status_code == 200
+    otp_code = reg_res.json()["otp_hint"]
+    assert otp_code is not None
 
-    # 2. Send OTP
-    send_res = client.post(
-        "/api/v1/auth/send-otp",
-        json={"target": unique_email, "channel": "email"}
-    )
-    assert send_res.status_code == 200
-    otp_code = send_res.json()["otp_hint"]
-
-    # 3. Resend OTP within 60s -> should trigger 429 Too Many Requests
+    # 2. Resend OTP within 60s -> should trigger 429 Too Many Requests
     cooldown_res = client.post(
         "/api/v1/auth/resend-otp",
         json={"target": unique_email, "channel": "email"}
     )
     assert cooldown_res.status_code == 429
 
-    # 4. Verify OTP -> should verify user & return access_token for auto-login
+    # 3. Verify OTP -> should verify user & return access_token for auto-login
     verify_res = client.post(
         "/api/v1/auth/verify-otp",
         json={"target": unique_email, "otp_code": otp_code}
@@ -215,5 +209,56 @@ def test_default_dev_admin_accounts():
     )
     assert res_bad.status_code == 401
     assert res_bad.json()["detail"] == "Invalid email or password."
+
+def test_complete_registration_to_otp_verification_flow():
+    unique_email = f"otp_flow_{uuid.uuid4().hex[:6]}@example.com"
+    unique_user = f"user_{uuid.uuid4().hex[:6]}"
+
+    # 1. Register User
+    reg_res = client.post(
+        "/api/v1/auth/register",
+        json={
+            "full_name": "OTP Test User",
+            "username": unique_user,
+            "email": unique_email,
+            "phone": f"+91{uuid.uuid4().hex[:10]}",
+            "password": "Password123!",
+            "role": "user"
+        }
+    )
+    assert reg_res.status_code == 200
+    reg_data = reg_res.json()
+    assert reg_data["status"] == "success"
+    otp_code = reg_data.get("otp_hint")
+    assert otp_code is not None
+    assert len(otp_code) == 6
+
+    # 2. Test Invalid OTP Code (should fail with 400 and log diagnostic warning)
+    invalid_verify = client.post(
+        "/api/v1/auth/verify-otp",
+        json={"target": unique_email, "otp_code": "000000"}
+    )
+    assert invalid_verify.status_code == 400
+    assert "Invalid or expired" in invalid_verify.json()["detail"]
+
+    # 3. Test Valid OTP Verification (should succeed, set is_email_verified=True, and issue JWT token)
+    valid_verify = client.post(
+        "/api/v1/auth/verify-otp",
+        json={"target": unique_email, "otp_code": otp_code}
+    )
+    assert valid_verify.status_code == 200
+    verify_data = valid_verify.json()
+    assert verify_data["user"]["is_email_verified"] is True
+    assert verify_data["user"]["verification_status"] == "verified"
+    assert "access_token" in verify_data
+
+    # 4. Re-verify used OTP Code (should fail because it's already used)
+    reused_verify = client.post(
+        "/api/v1/auth/verify-otp",
+        json={"target": unique_email, "otp_code": otp_code}
+    )
+    assert reused_verify.status_code == 400
+    assert "Invalid or expired" in reused_verify.json()["detail"]
+
 
 
