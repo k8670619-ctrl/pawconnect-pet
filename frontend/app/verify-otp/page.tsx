@@ -28,6 +28,7 @@ function VerifyOTPContent() {
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
 
+  const targetValue = activeTab === 'email' ? emailParam : phoneParam;
   const effectiveTarget = targetValue || emailParam || phoneParam || user?.email || user?.phone || '';
 
   // Countdown timer effect

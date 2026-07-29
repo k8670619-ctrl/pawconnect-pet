@@ -19,14 +19,12 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: 'Dashboard',     href: '/',               icon: <LayoutDashboard className="w-4 h-4" /> },
-  { label: 'Verifications', href: '/verifications',  icon: <ShieldCheck className="w-4 h-4" />, badge: 'live' },
-  { label: 'Payments',      href: '/payments',        icon: <CreditCard className="w-4 h-4" /> },
-  { label: 'Listings',      href: '/listings',        icon: <PawPrint className="w-4 h-4" /> },
-  { label: 'Users',         href: '/users',           icon: <Users className="w-4 h-4" />, superAdminOnly: true },
-  { label: 'Analytics',     href: '/analytics',       icon: <BarChart3 className="w-4 h-4" />, superAdminOnly: true },
-  { label: 'Fraud Monitor', href: '/fraud',           icon: <Bot className="w-4 h-4" />, superAdminOnly: true },
-  { label: 'Settings',      href: '/settings',        icon: <Settings className="w-4 h-4" />, superAdminOnly: true },
+  { label: 'Verifications Queue', href: '/verifications', icon: <ShieldCheck className="w-4 h-4" />, badge: 'Priority 1' },
+  { label: 'Reports & Revenue',   href: '/payments',      icon: <CreditCard className="w-4 h-4" />, badge: 'Priority 2' },
+  { label: 'Fraud Monitoring',    href: '/fraud',         icon: <Bot className="w-4 h-4" />, badge: 'Priority 3' },
+  { label: 'Dashboard Overview',  href: '/',               icon: <LayoutDashboard className="w-4 h-4" /> },
+  { label: 'Users Management',    href: '/users',          icon: <Users className="w-4 h-4" />, superAdminOnly: true },
+  { label: 'System Settings',     href: '/settings',       icon: <Settings className="w-4 h-4" />, superAdminOnly: true },
 ];
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

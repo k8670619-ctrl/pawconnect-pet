@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Filter, PawPrint } from 'lucide-react';
-import PetCard, { PetProps } from '@/components/PetCard';
+import PetListingCard from '@/components/PetListingCard';
 import { getPets } from '@/lib/api';
 
 function PetsContent() {
@@ -11,7 +11,7 @@ function PetsContent() {
   const initialListingType = searchParams.get('listing_type');
   const initialSearch = searchParams.get('search') || '';
 
-  const [pets, setPets] = useState<PetProps[]>([]);
+  const [pets, setPets] = useState<any[]>([]);
   const [category, setCategory] = useState('All');
   const [listingType, setListingType] = useState(
     initialListingType ? (initialListingType.toLowerCase() === 'adoption' ? 'Adoption' : initialListingType.toLowerCase() === 'sale' ? 'Sale' : 'All') : 'All'
@@ -97,20 +97,36 @@ function PetsContent() {
         ))}
       </div>
 
-      {/* Pet Grid */}
+      {/* Grid Display */}
       {loading ? (
-        <div className="text-center py-20 text-gray-400 text-sm">Loading pet listings...</div>
-      ) : pets.length === 0 ? (
-        <div className="glass-panel p-12 rounded-3xl text-center space-y-4">
-          <PawPrint className="w-12 h-12 text-gray-500 mx-auto" />
-          <h3 className="text-lg font-bold text-white">No pet listings found</h3>
-          <p className="text-xs text-gray-400">Try adjusting your category or search query.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-80 rounded-3xl bg-slate-900 border border-slate-800 animate-pulse" />
+          ))}
+        </div>
+      ) : pets.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {pets.map((pet: any) => (
+            <PetListingCard
+              key={pet.id}
+              id={pet.id}
+              name={pet.name}
+              breed={pet.breed || pet.category}
+              age_months={pet.age_months || 12}
+              location={pet.location || 'Chennai, TN'}
+              price={pet.price || 0}
+              listing_type={pet.listing_type || (pet.price > 0 ? 'sale' : 'adoption')}
+              image_url={pet.image_url || (pet.images && pet.images[0])}
+              is_vaccinated={pet.is_vaccinated !== false}
+              is_verified_seller={true}
+            />
+          ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pets.map((pet) => (
-            <PetCard key={pet.id} pet={pet} />
-          ))}
+        <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 space-y-3">
+          <PawPrint className="w-12 h-12 text-slate-600 mx-auto" />
+          <h3 className="text-lg font-bold text-white">No Pets Found</h3>
+          <p className="text-xs text-slate-400">Try adjusting your category or location search filters.</p>
         </div>
       )}
 

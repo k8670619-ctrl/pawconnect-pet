@@ -52,21 +52,50 @@ export default function LostFoundPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* High Priority Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-3xl bg-rose-950/60 border border-rose-500/40">
         <div>
-          <h1 className="text-3xl font-extrabold text-white flex items-center gap-2">
-            <AlertCircle className="w-8 h-8 text-amber-400" /> AI Lost & Found Matching Portal
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 text-xs font-extrabold mb-2 uppercase tracking-wider">
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <span>Emergency Lost &amp; Found Network</span>
+          </div>
+          <h1 className="text-3xl font-black text-white">
+            Lost &amp; Found Pets
           </h1>
-          <p className="text-xs text-gray-400 mt-1">Reuniting lost pets using AI visual similarity vector matching & community alerts</p>
+          <p className="text-xs text-rose-200 mt-1">Reuniting lost pets in Chennai via 5km radius alerts and AI visual similarity search.</p>
         </div>
 
         <button 
           onClick={() => setReportType(reportType === 'Lost' ? 'Found' : 'Lost')}
-          className="px-5 py-2.5 rounded-xl bg-amber-500 text-black font-bold text-xs shadow-lg"
+          className="w-full md:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white font-extrabold text-sm shadow-xl shadow-rose-950/50 flex items-center justify-center gap-2 transition-all hover:scale-105"
         >
-          Switch to Report {reportType === 'Lost' ? 'Found Pet' : 'Lost Pet'}
+          <AlertCircle className="w-5 h-5" />
+          <span>Report {reportType === 'Lost' ? 'Lost Pet' : 'Found Pet'}</span>
         </button>
+      </div>
+
+      {/* Chennai Live Emergency Map Placeholder */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <MapPin className="w-5 h-5 text-rose-400" />
+            <span>Chennai Geo-Fenced Rescue Map (5km Alerts)</span>
+          </div>
+          <span className="text-[11px] text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+            Active Hub: Chennai, TN
+          </span>
+        </div>
+
+        <div className="h-48 w-full rounded-2xl bg-slate-950 border border-slate-800/80 relative overflow-hidden flex items-center justify-center text-center p-6">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#f43f5e_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="relative z-10 space-y-2">
+            <div className="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto animate-ping">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-bold text-slate-300">Live Lost Pet Alert Radius Active in Chennai</p>
+            <p className="text-[11px] text-slate-500">Connecting 50+ local NGO rescuers in Adyar, Anna Nagar &amp; Velachery</p>
+          </div>
+        </div>
       </div>
 
       {/* AI Visual Matching Upload Box */}
