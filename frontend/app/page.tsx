@@ -30,7 +30,6 @@ import {
   MapPin,
   Bot,
   MessageSquare,
-  Sparkle,
 } from 'lucide-react';
 
 export default function Homepage() {
@@ -47,7 +46,7 @@ export default function Homepage() {
         if (Array.isArray(data) && data.length > 0) {
           setPets(data);
         } else {
-          // Chennai MVP Initial Dataset Fallback
+          // Chennai MVP Initial Fallback Dataset
           setPets([
             {
               id: 1,
@@ -129,18 +128,18 @@ export default function Homepage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white flex flex-col justify-between">
       
       <div>
-        {/* ==================== 1. HERO SECTION ==================== */}
+        {/* ==================== 1. ENHANCED HERO SECTION ==================== */}
         <section className="relative pt-12 pb-20 lg:pt-20 lg:pb-28 overflow-hidden">
-          {/* Ambient Glow Effects */}
+          {/* Ambient Radial Lighting */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[850px] h-[500px] bg-gradient-to-tr from-emerald-600/20 via-teal-500/15 to-cyan-500/10 rounded-full blur-[140px] pointer-events-none" />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center max-w-4xl mx-auto space-y-6">
               
-              {/* Top Badge */}
+              {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold shadow-lg shadow-emerald-950/50">
                 <Sparkles className="w-4 h-4 text-emerald-400" />
-                <span>Chennai's #1 Verified Pet Care &amp; Adoption Ecosystem</span>
+                <span>Chennai's #1 AI Pet Ecosystem &amp; Adoption Portal</span>
               </div>
 
               {/* Main Headline */}
@@ -156,8 +155,28 @@ export default function Homepage() {
                 Connecting pet parents, verified shelters, licensed veterinarians, and grooming specialists across Chennai.
               </p>
 
+              {/* Hero CTA Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Link
+                  href="/pets"
+                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm rounded-full shadow-2xl shadow-emerald-600/30 transition-all hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <Dog className="w-5 h-5" />
+                  <span>Explore Available Pets</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                <Link
+                  href="/ai-assistant"
+                  className="w-full sm:w-auto px-8 py-4 bg-slate-900/90 hover:bg-slate-800 text-white font-extrabold text-sm rounded-full border border-slate-700 shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <Bot className="w-5 h-5 text-emerald-400" />
+                  <span>Consult AI Tele-Vet</span>
+                </Link>
+              </div>
+
               {/* Search Bar with Quick Filter Pills */}
-              <div className="max-w-2xl mx-auto pt-2 space-y-3">
+              <div className="max-w-2xl mx-auto pt-6 space-y-3">
                 <div className="relative flex items-center">
                   <Search className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
                   <input
@@ -182,7 +201,7 @@ export default function Homepage() {
                       key={filter}
                       type="button"
                       onClick={() => setSelectedFilter(filter)}
-                      className={`px-3.5 py-1.5 text-xs font-bold rounded-full transition-all ${
+                      className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${
                         selectedFilter === filter
                           ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/60'
                           : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
@@ -522,7 +541,7 @@ export default function Homepage() {
         </section>
       </div>
 
-      {/* ==================== 6. IMPROVED FOOTER ==================== */}
+      {/* ==================== 6. FOOTER ==================== */}
       <Footer />
     </div>
   );
